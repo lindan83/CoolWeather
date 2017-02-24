@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
+    android:orientation="vertical">
+
+    <com.lance.common.widget.TopBar
+        android:id="@+id/tb_title_bar"
+        android:layout_width="match_parent"
+        android:layout_height="?android:attr/actionBarSize"
+        android:background="@color/colorPrimary"
+        app:leftDrawable="@mipmap/ic_back"
+        app:rightDrawable="@mipmap/ic_add"
+        app:rightVisibility="true"
+        app:titleText="@string/manager_city"
+        app:titleTextColor="@android:color/white"
+        app:titleTextSize="16sp"/>
+
+    <android.support.v7.widget.RecyclerView
+        android:id="@+id/rv_city"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+</LinearLayout>
