@@ -3,6 +3,8 @@
 
     <string name="app_common_error_msg">无法加载数据，请检查网络</string>
     <string name="app_common_button_text_i_know">我知道了</string>
+    <string name="app_common_button_text_ok">确定</string>
+    <string name="app_common_button_text_cancel">取消</string>
 
     <string name="app_common_progress_dialog_msg">正在加载……</string>
 
@@ -23,4 +25,33 @@
     <string name="manager_city">管理城市</string>
 
     <string name="weather_update_time">更新时间: </string>
+
+    <string name="app_setting">设置</string>
+    <string name="app_setting_auto_update">自动更新</string>
+    <string name="app_setting_auto_update_interval">更新间隔</string>
+    <string name="app_setting_show_notification">通知栏显示</string>
+
+    <string name="app_location_error_title">定位失败</string>
+    <string name="app_location_error_message">请手动选择城市</string>
+    <string name="app_location_success_title">定位成功</string>
+    <string name="app_location_success_message">是否选择当前城市: %s ?</string>
+
+    <string-array name="app_setting_auto_update_items">
+        <item>开</item>
+        <item>关</item>
+    </string-array>
+
+    <string-array name="app_setting_auto_update_interval_items">
+        <item>1小时</item>
+        <item>2小时</item>
+        <item>3小时</item>
+        <item>4小时</item>
+        <item>5小时</item>
+        <item>6小时</item>
+    </string-array>
+
+    <string-array name="app_setting_show_notification_items">
+        <item>开</item>
+        <item>关</item>
+    </string-array>
 </resources>

@@ -11,6 +11,11 @@ public class AppConfig {
     public static final String ACTION_REFRESH_WEATHER = "action_refresh_weather";
 
     /**
+     * 刷新每日一图，必须传入SHARE_IMAGE_URL
+     */
+    public static final String ACTION_REFRESH_IMAGE = "action_refresh_image";
+
+    /**
      * 城市ID参数名称
      */
     public static final String PARAM_CITY_ID = "city_id";
@@ -19,11 +24,6 @@ public class AppConfig {
      * 城市名称参数名称
      */
     public static final String PARAM_CITY_NAME = "city_name";
-
-    /**
-     * 刷新每日一图
-     */
-    public static final String ACTION_REFRESH_IMAGE = "action_refresh_image";
 
     /**
      * 保存在SharedPreference的城市ID列表Key
@@ -44,6 +44,21 @@ public class AppConfig {
      * 图片的日期
      */
     public static final String SHARE_IMAGE_DATE = "image_date";
+
+    /**
+     * 是否自动更新天气信息
+     */
+    public static final String SHARE_AUTO_UPDATE = "auto_update";
+
+    /**
+     * 自动更新天气的间隔时间，单位小时
+     */
+    public static final String SHARE_AUTO_UPDATE_INTERVAL = "auto_update_interval";
+
+    /**
+     * 是否通知栏显示
+     */
+    public static final String SHARE_SHOW_NOTIFICATION = "show_notification";
 
     /**
      * 天气状况图标，#为要替换的天气code

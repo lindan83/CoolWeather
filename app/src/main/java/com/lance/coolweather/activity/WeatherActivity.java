@@ -24,12 +24,14 @@ import com.lance.coolweather.R;
 import com.lance.coolweather.adapter.CityPagerAdapter;
 import com.lance.coolweather.api.WeatherService;
 import com.lance.coolweather.config.AppConfig;
+import com.lance.coolweather.config.AppUtil;
 import com.lance.coolweather.fragment.CityWeatherFragment;
 import com.lance.coolweather.service.AutoUpdateService;
 import com.lance.coolweather.util.ParseCityIdUtil;
 import com.lance.network.okhttputil.OkHttpUtils;
 import com.lance.network.okhttputil.callback.Callback;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Date;
@@ -74,9 +76,11 @@ public class WeatherActivity extends BaseActivity implements View.OnClickListene
         initData();
         initViews();
 
-        //开启后台更新服务
-        Intent intent = new Intent(this, AutoUpdateService.class);
-        startService(intent);
+        if (AppUtil.isAutoUpdateEnabled(this)) {
+            //开启后台更新服务
+            Intent intent = new Intent(this, AutoUpdateService.class);
+            startService(intent);
+        }
 
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(AppConfig.ACTION_REFRESH_IMAGE);
@@ -225,7 +229,11 @@ public class WeatherActivity extends BaseActivity implements View.OnClickListene
                         return null;
                     } finally {
                         if (is != null) {
-                            is.close();
+                            try {
+                                is.close();
+                            } catch (IOException e) {
+                                Log.e(TAG, "parseNetworkResponse: " + e.toString());
+                            }
                         }
                     }
                 }
@@ -253,15 +261,13 @@ public class WeatherActivity extends BaseActivity implements View.OnClickListene
         final int id = v.getId();
         switch (id) {
             case R.id.btn_city_manager:
-                Intent intent = new Intent(this, CityManagerActivity.class);
-                startActivityForResult(intent, RC_MANAGER_CITY);
+                startActivityForResult(new Intent(this, CityManagerActivity.class), RC_MANAGER_CITY);
                 break;
             case R.id.btn_setting:
-                // TODO: 17-2-23
+                startActivity(new Intent(this, SettingActivity.class));
                 break;
             case R.id.btn_add_city:
-                intent = new Intent(this, ChooseAreaActivity.class);
-                startActivityForResult(intent, RC_ADD_CITY);
+                startActivityForResult(new Intent(this, ChooseAreaActivity.class), RC_ADD_CITY);
                 break;
         }
     }

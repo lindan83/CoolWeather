@@ -106,9 +106,11 @@ public class CityManagerActivity extends BaseActivity {
                         County county = new County();
                         county.weatherId = cityId;
                         county.countyName = cityName;
-                        cityList.add(county);
-                        adapter.notifyItemInserted(cityList.size() - 1);
-                        updated = true;
+                        if(!cityList.contains(county)) {
+                            cityList.add(county);
+                            adapter.notifyItemInserted(cityList.size() - 1);
+                            updated = true;
+                        }
                     }
                 }
                 break;

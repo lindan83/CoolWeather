@@ -8,6 +8,7 @@ import android.support.annotation.Nullable;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -15,15 +16,23 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
 
+import com.baidu.location.BDLocation;
+import com.baidu.location.BDLocationListener;
+import com.baidu.location.LocationClient;
+import com.baidu.location.LocationClientOption;
 import com.google.gson.reflect.TypeToken;
 import com.lance.common.recyclerview.adapter.AbstractRecyclerViewAdapter;
 import com.lance.common.recyclerview.adapter.CommonRecyclerViewAdapter;
 import com.lance.common.recyclerview.adapter.base.CommonRecyclerViewHolder;
 import com.lance.common.util.JSONUtil;
+import com.lance.common.util.ToastUtil;
+import com.lance.common.widget.dialog.CustomizableAlertDialog;
+import com.lance.common.widget.dialog.CustomizableConfirmDialog;
 import com.lance.common.widget.dialog.DialogUtil;
 import com.lance.coolweather.R;
 import com.lance.coolweather.api.WeatherService;
 import com.lance.coolweather.api.result.GetAreaListResult;
+import com.lance.coolweather.api.result.GetCityInfoResult;
 import com.lance.coolweather.config.AppConfig;
 import com.lance.coolweather.db.City;
 import com.lance.coolweather.db.County;
@@ -45,7 +54,7 @@ import okhttp3.Response;
  * 选择区域
  */
 
-public class ChooseAreaFragment extends BaseFragment implements AbstractRecyclerViewAdapter.OnItemClickListener, View.OnClickListener {
+public class ChooseAreaFragment extends BaseFragment implements AbstractRecyclerViewAdapter.OnItemClickListener, View.OnClickListener, BDLocationListener {
     public static final String TAG = "ChooseAreaFragment";
 
     public static final int LEVEL_PROVINCE = 0;
@@ -90,7 +99,38 @@ public class ChooseAreaFragment extends BaseFragment implements AbstractRecycler
         adapter.setOnItemClickListener(this);
         btnBack.setOnClickListener(this);
 
-        queryProvinces();
+        initPosition();
+    }
+
+    private void initPosition() {
+        LocationClient locationClient = new LocationClient(getActivity());
+        LocationClientOption option = new LocationClientOption();
+        //设置定位模式，高精度，低功耗，仅设备
+        option.setLocationMode(LocationClientOption.LocationMode.Hight_Accuracy);
+        //默认gcj02，设置返回的定位结果坐标系
+        option.setCoorType("bd09ll");
+        //设置发起定位请求的间隔需要大于等于1000ms才是有效的.默认0，即仅定位一次
+        option.setScanSpan(0);
+        //设置是否需要地址信息，默认不需要
+        option.setIsNeedAddress(true);
+        //默认false,设置是否使用gps
+        option.setOpenGps(false);
+        //默认false，设置是否当GPS有效时按照1S/1次频率输出GPS结果
+        option.setLocationNotify(false);
+        //默认false，设置是否需要位置语义化结果，可以在BDLocation.getLocationDescribe里得到，结果类似于“在北京天安门附近”
+        option.setIsNeedLocationDescribe(false);
+        //默认false，设置是否需要POI结果，可以在BDLocation.getPoiList里得到
+        option.setIsNeedLocationPoiList(false);
+        //默认true，定位SDK内部是一个SERVICE，并放到了独立进程，设置是否在stop的时候杀死这个进程，默认不杀死
+        option.setIgnoreKillProcess(false);
+        //默认false，设置是否收集CRASH信息，默认收集
+        option.SetIgnoreCacheException(false);
+        //默认false，设置是否需要过滤GPS仿真结果，默认需要
+        option.setEnableSimulateGps(false);
+
+        locationClient.setLocOption(option);
+        locationClient.registerLocationListener(this);
+        locationClient.start();
     }
 
     @Override
@@ -105,18 +145,17 @@ public class ChooseAreaFragment extends BaseFragment implements AbstractRecycler
             String cityId = countyList.get(position).weatherId;
             String cityName = countyList.get(position).countyName;
             County county = DBAccessHelper.findCounty(cityId);
-            if(county == null) {
+            if (county == null) {
                 //本地数据库不存在，查询接口
                 queryCounties();
             } else {
-
+                Activity activity = getActivity();
+                Intent data = new Intent();
+                data.putExtra(AppConfig.PARAM_CITY_ID, cityId);
+                data.putExtra(AppConfig.PARAM_CITY_NAME, cityName);
+                activity.setResult(Activity.RESULT_OK, data);
+                activity.finish();
             }
-            Activity activity = getActivity();
-            Intent data = new Intent();
-            data.putExtra(AppConfig.PARAM_CITY_ID, cityId);
-            data.putExtra(AppConfig.PARAM_CITY_NAME, cityName);
-            activity.setResult(Activity.RESULT_OK, data);
-            activity.finish();
         }
     }
 
@@ -279,5 +318,96 @@ public class ChooseAreaFragment extends BaseFragment implements AbstractRecycler
 
     public int getCurrentLevel() {
         return currentLevel;
+    }
+
+    private void showLocationSuccessDialog(final String cityName) {
+        final CustomizableConfirmDialog confirmDialog = new CustomizableConfirmDialog(getActivity());
+        confirmDialog.setTitle(getString(R.string.app_location_success_title));
+        confirmDialog.setMessage(getString(R.string.app_location_success_message, cityName));
+        confirmDialog.setPositiveButton(getString(R.string.app_common_button_text_ok), new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showProgressDialog();
+                WeatherService.getInstance().getCityCode(cityName, new Callback<GetCityInfoResult>() {
+                    @Override
+                    public GetCityInfoResult parseNetworkResponse(Response response, int id) throws Exception {
+                        String json = response.body().string();
+                        return JSONUtil.getObjectFromJson(json, GetCityInfoResult.class);
+                    }
+
+                    @Override
+                    public void onError(Call call, Response response, Exception exception, int id) {
+                        Log.e(TAG, "onError: " + exception.toString());
+                        closeProgressDialog();
+                        DialogUtil.showAlertDialog(getActivity(), "", getString(R.string.app_common_error_msg), getString(R.string.app_common_button_text_i_know));
+                    }
+
+                    @Override
+                    public void onResponse(GetCityInfoResult response, int id) {
+                        if (response != null && response.HeWeather5 != null && !response.HeWeather5.isEmpty()) {
+                            GetCityInfoResult.HeWeather5Bean weather = response.HeWeather5.get(0);
+                            if (TextUtils.equals(weather.status, "ok")) {
+                                Activity activity = getActivity();
+                                Intent data = new Intent();
+                                data.putExtra(AppConfig.PARAM_CITY_ID, weather.basic.id);
+                                data.putExtra(AppConfig.PARAM_CITY_NAME, weather.basic.city);
+                                activity.setResult(Activity.RESULT_OK, data);
+                                activity.finish();
+                            } else {
+                                ToastUtil.showShort(getActivity(), weather.status);
+                            }
+                        } else {
+                            showLocationErrorDialog();
+                        }
+                    }
+                }, getActivity());
+            }
+        });
+        confirmDialog.setNegativeButton(getString(R.string.app_common_button_text_cancel), new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                confirmDialog.dismiss();
+                getActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        queryProvinces();
+                    }
+                });
+            }
+        });
+        confirmDialog.show();
+    }
+
+    private void showLocationErrorDialog() {
+        final CustomizableAlertDialog alertDialog = new CustomizableAlertDialog(getActivity());
+        alertDialog.setTitle(getString(R.string.app_location_error_title));
+        alertDialog.setMessage(getString(R.string.app_location_error_message));
+        alertDialog.setButton(getString(R.string.app_common_button_text_ok), new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                alertDialog.dismiss();
+                queryProvinces();
+            }
+        });
+        alertDialog.show();
+    }
+
+    @Override
+    public void onReceiveLocation(BDLocation bdLocation) {
+        int locType = bdLocation.getLocType();
+        if (locType == BDLocation.TypeServerError
+                || locType == BDLocation.TypeNetWorkException
+                || locType == BDLocation.TypeCriteriaException) {
+            Log.d(TAG, "onReceiveLocation: error = " + locType);
+            showLocationErrorDialog();
+        } else {
+            String city = bdLocation.getAddress().city;
+            showLocationSuccessDialog(city);
+        }
+    }
+
+    @Override
+    public void onConnectHotSpotMessage(String s, int i) {
+
     }
 }

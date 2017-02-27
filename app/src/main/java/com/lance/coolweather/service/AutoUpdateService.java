@@ -1,12 +1,15 @@
 package com.lance.coolweather.service;
 
 import android.app.AlarmManager;
+import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.BitmapFactory;
 import android.os.IBinder;
 import android.os.SystemClock;
+import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.text.TextUtils;
 import android.util.Log;
@@ -14,9 +17,15 @@ import android.util.Log;
 import com.lance.common.util.DateUtil;
 import com.lance.common.util.JSONUtil;
 import com.lance.common.util.SPUtil;
+import com.lance.coolweather.R;
+import com.lance.coolweather.activity.WeatherActivity;
 import com.lance.coolweather.api.WeatherService;
 import com.lance.coolweather.api.result.WeatherResult;
 import com.lance.coolweather.config.AppConfig;
+import com.lance.coolweather.config.AppUtil;
+import com.lance.coolweather.db.County;
+import com.lance.coolweather.db.DBAccessHelper;
+import com.lance.coolweather.util.ParseCityIdUtil;
 import com.lance.network.okhttputil.callback.Callback;
 
 import java.util.ArrayList;
@@ -30,8 +39,61 @@ import okhttp3.Response;
 
 public class AutoUpdateService extends Service {
     private static final String TAG = "AutoUpdateService";
+    private boolean autoUpdate;
+    private int autoUpdateInterval;
 
     public AutoUpdateService() {
+    }
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        autoUpdate = AppUtil.isAutoUpdateEnabled(this);
+        autoUpdateInterval = AppUtil.getAutoUpdateInterval(this);
+        boolean showNotification = AppUtil.isNotificationDisplayEnabled(this);
+        if (showNotification) {
+            County county = getCountyInfo();
+            if (county != null) {
+                String weatherString = (String) SPUtil.get(this, AppConfig.SHARE_WEATHER + county.weatherId, "");
+                WeatherResult weather = JSONUtil.getObjectFromJson(weatherString, WeatherResult.class);
+                WeatherResult.HeWeather5Bean weatherBean;
+                String cityName = null, degree = null, weatherInfo = null;
+                if (weather != null && weather.HeWeather5 != null && !weather.HeWeather5.isEmpty()) {
+                    weatherBean = weather.HeWeather5.get(0);
+                    cityName = weatherBean.basic.city;
+                    degree = weatherBean.now.tmp;
+                    weatherInfo = weatherBean.now.cond.txt;
+                }
+                String txt = "";
+                if (!TextUtils.isEmpty(cityName) && !TextUtils.isEmpty(degree) && !TextUtils.isEmpty(weatherInfo)) {
+                    txt = String.format("%s 气温%s %s", cityName, degree + "℃", weatherInfo);
+                }
+                Intent i = new Intent(this, WeatherActivity.class);
+                PendingIntent pi = PendingIntent.getActivity(this, 0, i, 0);
+                Notification notification = new NotificationCompat.Builder(this)
+                        .setContentTitle(!TextUtils.isEmpty(cityName) ? cityName : "")
+                        .setContentText(txt)
+                        .setSmallIcon(R.mipmap.ic_icon)
+                        .setLargeIcon(BitmapFactory.decodeResource(getResources(), R.mipmap.ic_icon))
+                        .setAutoCancel(false)
+                        .setContentIntent(pi).build();
+                startForeground(1, notification);
+            }
+        }
+    }
+
+    private County getCountyInfo() {
+        String cityIdString = (String) SPUtil.get(this, AppConfig.SHARE_KEY_CITY_ID_LIST, "");
+        String cityId = null;
+        if (!TextUtils.isEmpty(cityIdString)) {
+            List<String> cityIds = new ArrayList<>();
+            cityIds.addAll(ParseCityIdUtil.parse(cityIdString));
+            cityId = cityIds.get(0);
+        }
+        if (!TextUtils.isEmpty(cityId)) {
+            return DBAccessHelper.findCounty(cityId);
+        }
+        return null;
     }
 
     @Override
@@ -41,15 +103,19 @@ public class AutoUpdateService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        updateWeather();
-        updateImage();
-        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
-        int interval = 4 * 3600000;//4小时更新一次
-        //int interval = 5000;
-        Intent i = new Intent(this, AutoUpdateService.class);
-        PendingIntent pi = PendingIntent.getService(this, 0, i, 0);
-        alarmManager.cancel(pi);
-        alarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + interval, pi);
+        if (autoUpdate) {
+            updateWeather();
+            updateImage();
+            AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+            int interval = autoUpdateInterval * 3600000;//指定N小时更新一次
+            Intent i = new Intent(this, AutoUpdateService.class);
+            PendingIntent pi = PendingIntent.getService(this, 0, i, 0);
+            alarmManager.cancel(pi);
+            alarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + interval, pi);
+            Log.d(TAG, "onStartCommand: interval = " + interval);
+        } else {
+            stopSelf();
+        }
         return super.onStartCommand(intent, flags, startId);
     }
 
@@ -135,5 +201,18 @@ public class AutoUpdateService extends Service {
                 }
             }
         }, this);
+    }
+
+    @Override
+    public void onDestroy() {
+        stopAlarmManager();
+        super.onDestroy();
+    }
+
+    private void stopAlarmManager() {
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        Intent i = new Intent(this, AutoUpdateService.class);
+        PendingIntent pi = PendingIntent.getService(this, 0, i, 0);
+        alarmManager.cancel(pi);
     }
 }

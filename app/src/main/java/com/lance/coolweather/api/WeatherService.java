@@ -20,6 +20,11 @@ public class WeatherService {
     private static final String WEATHER_URL = "https://free-api.heweather.com/v5/weather";
 
     /**
+     * 城市代码查询接口
+     */
+    private static final String CITY_URL = "https://free-api.heweather.com/v5/search";
+
+    /**
      * 获取每日一图
      */
     private static final String IMAGE_URL = "http://guolin.tech/api/bing_pic";
@@ -70,6 +75,7 @@ public class WeatherService {
 
     /**
      * 获取天气预报信息
+     *
      * @param city 城市名称 中英文名称、ID和IP地址
      */
     public void getWeatherInfo(String city, Callback callback, Object tag) {
@@ -81,5 +87,14 @@ public class WeatherService {
      */
     public void getTodaysImage(Callback callback, Object tag) {
         OkHttpUtils.get().url(IMAGE_URL).tag(tag).build().execute(callback);
+    }
+
+    /**
+     * 获取城市代码
+     *
+     * @param cityName 城市名称
+     */
+    public void getCityCode(String cityName, Callback callback, Object tag) {
+        OkHttpUtils.get().url(CITY_URL).addParams("key", KEY).addParams("city", cityName).tag(tag).build().execute(callback);
     }
 }

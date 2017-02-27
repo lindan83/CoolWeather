@@ -88,7 +88,6 @@ public class CityWeatherFragment extends BaseFragment implements SwipeRefreshLay
         initViews(view);
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(AppConfig.ACTION_REFRESH_WEATHER);
-        //intentFilter.addAction(AppConfig.ACTION_REFRESH_IMAGE);
         LocalBroadcastManager.getInstance(getActivity()).registerReceiver(refreshWeatherReceiver, intentFilter);
         return view;
     }

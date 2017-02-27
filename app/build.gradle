@@ -40,6 +40,11 @@ android {
 //            applicationId "com.lance.coolweather.baidu"
 //        }
 //    }
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ['libs']
+        }
+    }
 }
 
 dependencies {
