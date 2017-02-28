@@ -4,6 +4,10 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.content.LocalBroadcastManager;
@@ -13,12 +17,10 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-import com.lance.common.glideimageloader.GlideImageLoader;
 import com.lance.common.util.JSONUtil;
 import com.lance.common.util.SPUtil;
 import com.lance.common.util.ToastUtil;
@@ -30,8 +32,10 @@ import com.lance.coolweather.api.result.DailyForecastResult;
 import com.lance.coolweather.api.result.HourlyForecastResult;
 import com.lance.coolweather.api.result.WeatherResult;
 import com.lance.coolweather.config.AppConfig;
-import com.lance.coolweather.service.AutoUpdateService;
+import com.lance.network.okhttputil.OkHttpUtils;
 import com.lance.network.okhttputil.callback.Callback;
+
+import java.io.InputStream;
 
 import okhttp3.Call;
 import okhttp3.Response;
@@ -46,13 +50,12 @@ public class CityWeatherFragment extends BaseFragment implements SwipeRefreshLay
 
     private ScrollView scrollWeather;
     private TextView tvCity, tvDegree, tvWeatherInfo, tvUpdateTime, tvAQI, tvPM25, tvComfort, tvCarWash, tvSport;
-    private ImageView ivWeatherIcon;
     private LinearLayout llHourlyForecast, llDailyForecast;
     private SwipeRefreshLayout swipeRefresh;
 
     private String cityId;
 
-    private BroadcastReceiver refreshWeatherReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver refreshWeatherReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             final String action = intent.getAction();
@@ -121,8 +124,6 @@ public class CityWeatherFragment extends BaseFragment implements SwipeRefreshLay
     private void initViews(View view) {
         scrollWeather = (ScrollView) view.findViewById(R.id.scroll_weather);
         tvCity = (TextView) view.findViewById(R.id.tv_city);
-        ivWeatherIcon = (ImageView) view.findViewById(R.id.iv_weather_icon);
-        ivWeatherIcon.setVisibility(View.GONE);
         tvDegree = (TextView) view.findViewById(R.id.tv_degree);
         tvWeatherInfo = (TextView) view.findViewById(R.id.tv_weather_info);
         tvUpdateTime = (TextView) view.findViewById(R.id.tv_update_time);
@@ -149,17 +150,6 @@ public class CityWeatherFragment extends BaseFragment implements SwipeRefreshLay
         bundle.putString("city_id", cityId);
         fragment.setArguments(bundle);
         return fragment;
-    }
-
-    /**
-     * 修改城市，刷新天气
-     */
-    public void refreshCityWeather() {
-        swipeRefresh.setRefreshing(true);
-        requestWeather(cityId);
-
-        Intent intent = new Intent(getActivity(), AutoUpdateService.class);
-        getActivity().startService(intent);
     }
 
     //向接口请求天气信息
@@ -207,9 +197,42 @@ public class CityWeatherFragment extends BaseFragment implements SwipeRefreshLay
         tvCity.setText(cityName);
         tvDegree.setText(degree);
         tvWeatherInfo.setText(weatherInfo);
-        tvUpdateTime.setText(getString(R.string.weather_update_time) + updateTime);
-        GlideImageLoader.loadStringResource(ivWeatherIcon, AppConfig.WEATHER_ICON_URL.replaceAll("#", weatherBean.now.cond.code));
-        ivWeatherIcon.setVisibility(View.VISIBLE);
+        tvUpdateTime.setText(getString(R.string.weather_update_time, updateTime));
+        OkHttpUtils.get().url(AppConfig.WEATHER_ICON_URL.replace("#", weatherBean.now.cond.code)).build().execute(new Callback<Drawable>() {
+            @Override
+            public Drawable parseNetworkResponse(Response response, int id) throws Exception {
+                InputStream is = response.body().byteStream();
+                try {
+                    Bitmap bmp = BitmapFactory.decodeStream(is);
+                    if (bmp != null) {
+                        Drawable drawable = new BitmapDrawable(getResources(), bmp);
+                        drawable.setBounds(0, 0, bmp.getWidth(), bmp.getHeight());
+                        return drawable;
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "parseNetworkResponse: " + e.toString());
+                } finally {
+                    if (is != null) {
+                        try {
+                            is.close();
+                        } catch (Exception e) {
+                            Log.e(TAG, "parseNetworkResponse: " + e.toString());
+                        }
+                    }
+                }
+                return null;
+            }
+
+            @Override
+            public void onError(Call call, Response response, Exception exception, int id) {
+
+            }
+
+            @Override
+            public void onResponse(Drawable response, int id) {
+                tvWeatherInfo.setCompoundDrawables(null, null, response, null);
+            }
+        });
 
         if (weatherBean.aqi != null) {
             tvAQI.setText(weatherBean.aqi.city.aqi);

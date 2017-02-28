@@ -1,5 +1,6 @@
 package com.lance.coolweather.activity;
 
+import android.annotation.SuppressLint;
 import android.app.ProgressDialog;
 import android.support.v7.app.AppCompatActivity;
 
@@ -8,6 +9,7 @@ import com.lance.coolweather.R;
 /**
  * Created by lindan on 17-2-21.
  */
+@SuppressLint("Registered")
 public class BaseActivity extends AppCompatActivity {
     protected ProgressDialog progressDialog;
 

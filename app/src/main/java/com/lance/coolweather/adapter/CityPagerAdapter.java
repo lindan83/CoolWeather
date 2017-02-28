@@ -14,7 +14,7 @@ import java.util.List;
  * Created by lindan on 17-2-23.
  */
 public class CityPagerAdapter extends FragmentPagerAdapter {
-    private List<CityWeatherFragment> fragments = new ArrayList<>();
+    private final List<CityWeatherFragment> fragments = new ArrayList<>();
 
     public CityPagerAdapter(FragmentManager fm, List<CityWeatherFragment> fragments) {
         super(fm);

@@ -26,7 +26,7 @@ import java.util.List;
 public class CityManagerActivity extends BaseActivity {
     private static final int RC_ADD_CITY = 1000;
     private CityListAdapter adapter;
-    private List<County> cityList = new ArrayList<>();
+    private final List<County> cityList = new ArrayList<>();
 
     private boolean updated;//是否修改过城市列表
 

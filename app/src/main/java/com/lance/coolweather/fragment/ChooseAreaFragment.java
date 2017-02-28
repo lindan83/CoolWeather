@@ -72,7 +72,7 @@ public class ChooseAreaFragment extends BaseFragment
     private Button btnBack;
     private RecyclerView rvArea;
     private CommonRecyclerViewAdapter<String> adapter;
-    private List<String> dataList = new ArrayList<>();
+    private final List<String> dataList = new ArrayList<>();
     private List<Province> provinceList;
     private List<City> cityList;
     private List<County> countyList;
@@ -384,7 +384,6 @@ public class ChooseAreaFragment extends BaseFragment
                                 public void onResponse(GetCityInfoResult response, int id) {
                                     if (response != null && response.HeWeather5 != null && !response.HeWeather5.isEmpty()) {
                                         GetCityInfoResult.HeWeather5Bean weather = response.HeWeather5.get(0);
-                                        // TODO: 17-2-28
                                         if (TextUtils.equals(weather.status, "ok")) {
                                             Activity activity = getActivity();
                                             Intent data = new Intent();

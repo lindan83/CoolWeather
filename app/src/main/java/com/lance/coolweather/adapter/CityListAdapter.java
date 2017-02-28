@@ -18,7 +18,7 @@ import java.util.List;
 
 public class CityListAdapter extends CommonRecyclerViewAdapter<County> {
     private boolean showDelete;
-    private CityManagerActivity cityManagerActivity;
+    private final CityManagerActivity cityManagerActivity;
 
     public CityListAdapter(CityManagerActivity context, List<County> data) {
         super(context, R.layout.city_item, data);

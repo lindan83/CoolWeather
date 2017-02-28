@@ -24,7 +24,7 @@
     <string name="add_city">添加城市</string>
     <string name="manager_city">管理城市</string>
 
-    <string name="weather_update_time">更新时间: </string>
+    <string name="weather_update_time">更新时间: %s</string>
 
     <string name="app_setting">设置</string>
     <string name="app_setting_auto_update">自动更新</string>

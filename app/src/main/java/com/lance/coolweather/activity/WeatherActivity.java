@@ -53,13 +53,13 @@ public class WeatherActivity extends BaseActivity implements View.OnClickListene
     private ViewPager vpCities;
     private RelativeLayout rlMain;
     private Button btnAddCity;
-    private List<View> cityIndicatorViews = new ArrayList<>();
+    private final List<View> cityIndicatorViews = new ArrayList<>();
     private CityPagerAdapter pagerAdapter;
-    private Map<String, CityWeatherFragment> fragmentMap = new HashMap<>();
-    private List<County> countyList = new ArrayList<>();
+    private final Map<String, CityWeatherFragment> fragmentMap = new HashMap<>();
+    private final List<County> countyList = new ArrayList<>();
     private int currentIndex;
 
-    private BroadcastReceiver refreshImageReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver refreshImageReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             final String action = intent.getAction();
@@ -146,7 +146,7 @@ public class WeatherActivity extends BaseActivity implements View.OnClickListene
         }
         vpCities.setCurrentItem(currentIndex);
         btnAddCity.setVisibility(countyList.isEmpty() ? View.VISIBLE : View.GONE);
-        addIndicatorView(llIndicators, currentIndex, countyList == null ? 0 : countyList.size());
+        addIndicatorView(llIndicators, currentIndex, countyList.size());
     }
 
     private void initViews() {
@@ -182,7 +182,7 @@ public class WeatherActivity extends BaseActivity implements View.OnClickListene
             }
         });
         vpCities.setCurrentItem(currentIndex);
-        addIndicatorView(llIndicators, currentIndex, countyList == null ? 0 : countyList.size());
+        addIndicatorView(llIndicators, currentIndex, countyList.size());
     }
 
     private void addIndicatorView(LinearLayout guideGroup, int startPos, int count) {
