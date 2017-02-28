@@ -8,14 +8,14 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
 
+import com.google.gson.reflect.TypeToken;
+import com.lance.common.util.JSONUtil;
 import com.lance.common.util.SPUtil;
 import com.lance.common.widget.TopBar;
 import com.lance.coolweather.R;
 import com.lance.coolweather.adapter.CityListAdapter;
 import com.lance.coolweather.config.AppConfig;
 import com.lance.coolweather.db.County;
-import com.lance.coolweather.db.DBAccessHelper;
-import com.lance.coolweather.util.ParseCityIdUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,11 +40,11 @@ public class CityManagerActivity extends BaseActivity {
     }
 
     private void initData() {
-        String cityString = (String) SPUtil.get(this, AppConfig.SHARE_KEY_CITY_ID_LIST, "");
-        if (!TextUtils.isEmpty(cityString)) {
-            List<String> cityIdList = ParseCityIdUtil.parse(cityString);
-            List<County> countyList = DBAccessHelper.findCountyList(cityIdList);
-            if (countyList != null && !countyList.isEmpty() && countyList.size() == cityIdList.size()) {
+        String countyListJson = (String) SPUtil.get(this, AppConfig.SHARE_KEY_CITY_LIST, "");
+        if (!TextUtils.isEmpty(countyListJson)) {
+            List<County> countyList = JSONUtil.getObjectFromJson(countyListJson, new TypeToken<List<County>>() {
+            }.getType());
+            if (countyList != null && !countyList.isEmpty()) {
                 cityList.addAll(countyList);
             }
         }
@@ -106,7 +106,7 @@ public class CityManagerActivity extends BaseActivity {
                         County county = new County();
                         county.weatherId = cityId;
                         county.countyName = cityName;
-                        if(!cityList.contains(county)) {
+                        if (!cityList.contains(county)) {
                             cityList.add(county);
                             adapter.notifyItemInserted(cityList.size() - 1);
                             updated = true;
@@ -117,13 +117,13 @@ public class CityManagerActivity extends BaseActivity {
         }
     }
 
+    //返回或关闭时保存城市列表
     private void saveResult() {
-        List<String> idList = new ArrayList<>();
-        for (County county : cityList) {
-            idList.add(county.weatherId);
+        String countyJson = JSONUtil.getJsonFromObject(cityList);
+        if (countyJson == null) {
+            countyJson = "";
         }
-        String idString = ParseCityIdUtil.format(idList);
-        SPUtil.put(this, AppConfig.SHARE_KEY_CITY_ID_LIST, idString);
+        SPUtil.put(this, AppConfig.SHARE_KEY_CITY_LIST, countyJson);
     }
 
     public void setUpdated(boolean updated) {

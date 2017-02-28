@@ -18,16 +18,18 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 
+import com.google.gson.reflect.TypeToken;
 import com.lance.common.util.DateUtil;
+import com.lance.common.util.JSONUtil;
 import com.lance.common.util.SPUtil;
 import com.lance.coolweather.R;
 import com.lance.coolweather.adapter.CityPagerAdapter;
 import com.lance.coolweather.api.WeatherService;
 import com.lance.coolweather.config.AppConfig;
 import com.lance.coolweather.config.AppUtil;
+import com.lance.coolweather.db.County;
 import com.lance.coolweather.fragment.CityWeatherFragment;
 import com.lance.coolweather.service.AutoUpdateService;
-import com.lance.coolweather.util.ParseCityIdUtil;
 import com.lance.network.okhttputil.OkHttpUtils;
 import com.lance.network.okhttputil.callback.Callback;
 
@@ -54,7 +56,7 @@ public class WeatherActivity extends BaseActivity implements View.OnClickListene
     private List<View> cityIndicatorViews = new ArrayList<>();
     private CityPagerAdapter pagerAdapter;
     private Map<String, CityWeatherFragment> fragmentMap = new HashMap<>();
-    private List<String> cityIds = new ArrayList<>();
+    private List<County> countyList = new ArrayList<>();
     private int currentIndex;
 
     private BroadcastReceiver refreshImageReceiver = new BroadcastReceiver() {
@@ -96,46 +98,55 @@ public class WeatherActivity extends BaseActivity implements View.OnClickListene
     }
 
     private void initData() {
-        String cityIdString = (String) SPUtil.get(this, AppConfig.SHARE_KEY_CITY_ID_LIST, "");
-        cityIds.addAll(ParseCityIdUtil.parse(cityIdString));
-        if (!cityIds.isEmpty()) {
-            for (String cityId : cityIds) {
-                CityWeatherFragment fragment = CityWeatherFragment.newInstance(cityId);
-                fragmentMap.put(cityId, fragment);
+        String countyListJson = (String) SPUtil.get(this, AppConfig.SHARE_KEY_CITY_LIST, "");
+        List<County> temp = JSONUtil.getObjectFromJson(countyListJson, new TypeToken<List<County>>() {
+        }.getType());
+        if (temp != null && !temp.isEmpty()) {
+            countyList.addAll(temp);
+            for (County county : countyList) {
+                CityWeatherFragment fragment = CityWeatherFragment.newInstance(county.weatherId);
+                fragmentMap.put(county.weatherId, fragment);
             }
         }
         pagerAdapter = new CityPagerAdapter(getSupportFragmentManager(), new ArrayList<>(fragmentMap.values()));
     }
 
     private void refreshCityList() {
-        String cityIdString = (String) SPUtil.get(this, AppConfig.SHARE_KEY_CITY_ID_LIST, "");
-        cityIds.clear();
-        cityIds.addAll(ParseCityIdUtil.parse(cityIdString));
-
-        if (!cityIds.isEmpty()) {
+        String countyListJson = (String) SPUtil.get(this, AppConfig.SHARE_KEY_CITY_LIST, "");
+        List<County> temp = JSONUtil.getObjectFromJson(countyListJson, new TypeToken<List<County>>() {
+        }.getType());
+        countyList.clear();
+        if (temp != null && !temp.isEmpty()) {
+            countyList.addAll(temp);
+        }
+        if (!countyList.isEmpty()) {
             //增加新添加的城市
-            for (String cityId : cityIds) {
-                if (!fragmentMap.containsKey(cityId)) {
-                    CityWeatherFragment newFragment = CityWeatherFragment.newInstance(cityId);
-                    fragmentMap.put(cityId, newFragment);
+            for (County county : countyList) {
+                if (!fragmentMap.containsKey(county.weatherId)) {
+                    CityWeatherFragment newFragment = CityWeatherFragment.newInstance(county.weatherId);
+                    fragmentMap.put(county.weatherId, newFragment);
                     pagerAdapter.addFragment(newFragment);
                 }
             }
             //删除被删除的城市
+            List<String> countyIdList = new ArrayList<>(countyList.size());
+            for (County county : countyList) {
+                countyIdList.add(county.weatherId);
+            }
             for (String oldCityId : fragmentMap.keySet()) {
-                if (!cityIds.contains(oldCityId)) {
+                if (!countyIdList.contains(oldCityId)) {
                     fragmentMap.remove(oldCityId);
                     pagerAdapter.removeFragment(oldCityId);
                 }
             }
         }
         pagerAdapter.notifyDataSetChanged();
-        if (currentIndex >= cityIds.size()) {
-            currentIndex = cityIds.size() - 1;
+        if (currentIndex >= countyList.size()) {
+            currentIndex = countyList.size() - 1;
         }
         vpCities.setCurrentItem(currentIndex);
-        btnAddCity.setVisibility(cityIds.isEmpty() ? View.VISIBLE : View.GONE);
-        addIndicatorView(llIndicators, currentIndex, cityIds == null ? 0 : cityIds.size());
+        btnAddCity.setVisibility(countyList.isEmpty() ? View.VISIBLE : View.GONE);
+        addIndicatorView(llIndicators, currentIndex, countyList == null ? 0 : countyList.size());
     }
 
     private void initViews() {
@@ -145,7 +156,7 @@ public class WeatherActivity extends BaseActivity implements View.OnClickListene
         Button btnSetting = (Button) findViewById(R.id.btn_setting);
         btnSetting.setOnClickListener(this);
         btnAddCity = (Button) findViewById(R.id.btn_add_city);
-        btnAddCity.setVisibility(cityIds.isEmpty() ? View.VISIBLE : View.GONE);
+        btnAddCity.setVisibility(countyList.isEmpty() ? View.VISIBLE : View.GONE);
         btnAddCity.setOnClickListener(this);
         vpCities = (ViewPager) findViewById(R.id.vp_cities);
         llIndicators = (LinearLayout) findViewById(R.id.ll_indicators);
@@ -171,7 +182,7 @@ public class WeatherActivity extends BaseActivity implements View.OnClickListene
             }
         });
         vpCities.setCurrentItem(currentIndex);
-        addIndicatorView(llIndicators, currentIndex, cityIds == null ? 0 : cityIds.size());
+        addIndicatorView(llIndicators, currentIndex, countyList == null ? 0 : countyList.size());
     }
 
     private void addIndicatorView(LinearLayout guideGroup, int startPos, int count) {
@@ -278,11 +289,19 @@ public class WeatherActivity extends BaseActivity implements View.OnClickListene
         switch (requestCode) {
             case RC_ADD_CITY:
                 if (resultCode == RESULT_OK) {
-                    String cityId = data.getStringExtra(AppConfig.PARAM_CITY_ID);
-                    if (!TextUtils.isEmpty(cityId)) {
-                        cityIds.add(cityId);
-                        SPUtil.put(this, AppConfig.SHARE_KEY_CITY_ID_LIST, ParseCityIdUtil.format(cityIds));
-                        btnAddCity.setVisibility(cityIds.isEmpty() ? View.VISIBLE : View.GONE);
+                    String countyId = data.getStringExtra(AppConfig.PARAM_CITY_ID);
+                    String countyName = data.getStringExtra(AppConfig.PARAM_CITY_NAME);
+                    if (!TextUtils.isEmpty(countyId)) {
+                        County county = new County();
+                        county.weatherId = countyId;
+                        county.countyName = countyName;
+                        countyList.add(county);
+                        String countyListJson = JSONUtil.getJsonFromObject(countyList);
+                        if (countyListJson == null) {
+                            countyListJson = "";
+                        }
+                        SPUtil.put(this, AppConfig.SHARE_KEY_CITY_LIST, countyListJson);
+                        btnAddCity.setVisibility(countyList.isEmpty() ? View.VISIBLE : View.GONE);
                         refreshCityList();
                     }
                 }

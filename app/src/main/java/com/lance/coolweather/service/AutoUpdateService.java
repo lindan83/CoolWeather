@@ -14,6 +14,7 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.text.TextUtils;
 import android.util.Log;
 
+import com.google.gson.reflect.TypeToken;
 import com.lance.common.util.DateUtil;
 import com.lance.common.util.JSONUtil;
 import com.lance.common.util.SPUtil;
@@ -24,8 +25,6 @@ import com.lance.coolweather.api.result.WeatherResult;
 import com.lance.coolweather.config.AppConfig;
 import com.lance.coolweather.config.AppUtil;
 import com.lance.coolweather.db.County;
-import com.lance.coolweather.db.DBAccessHelper;
-import com.lance.coolweather.util.ParseCityIdUtil;
 import com.lance.network.okhttputil.callback.Callback;
 
 import java.util.ArrayList;
@@ -83,15 +82,11 @@ public class AutoUpdateService extends Service {
     }
 
     private County getCountyInfo() {
-        String cityIdString = (String) SPUtil.get(this, AppConfig.SHARE_KEY_CITY_ID_LIST, "");
-        String cityId = null;
-        if (!TextUtils.isEmpty(cityIdString)) {
-            List<String> cityIds = new ArrayList<>();
-            cityIds.addAll(ParseCityIdUtil.parse(cityIdString));
-            cityId = cityIds.get(0);
-        }
-        if (!TextUtils.isEmpty(cityId)) {
-            return DBAccessHelper.findCounty(cityId);
+        String countyListJson = (String) SPUtil.get(this, AppConfig.SHARE_KEY_CITY_LIST, "");
+        List<County> countyList = JSONUtil.getObjectFromJson(countyListJson, new TypeToken<List<County>>() {
+        }.getType());
+        if(countyList != null && !countyList.isEmpty()) {
+            return countyList.get(0);
         }
         return null;
     }
@@ -108,6 +103,7 @@ public class AutoUpdateService extends Service {
             updateImage();
             AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
             int interval = autoUpdateInterval * 3600000;//指定N小时更新一次
+            //int interval = autoUpdateInterval*1000;
             Intent i = new Intent(this, AutoUpdateService.class);
             PendingIntent pi = PendingIntent.getService(this, 0, i, 0);
             alarmManager.cancel(pi);

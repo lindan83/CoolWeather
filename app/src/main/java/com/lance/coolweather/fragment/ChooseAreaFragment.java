@@ -1,9 +1,11 @@
 package com.lance.coolweather.fragment;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
@@ -26,9 +28,8 @@ import com.lance.common.recyclerview.adapter.CommonRecyclerViewAdapter;
 import com.lance.common.recyclerview.adapter.base.CommonRecyclerViewHolder;
 import com.lance.common.util.JSONUtil;
 import com.lance.common.util.ToastUtil;
-import com.lance.common.widget.dialog.CustomizableAlertDialog;
-import com.lance.common.widget.dialog.CustomizableConfirmDialog;
 import com.lance.common.widget.dialog.DialogUtil;
+import com.lance.common.widget.dialog.IDialog;
 import com.lance.coolweather.R;
 import com.lance.coolweather.api.WeatherService;
 import com.lance.coolweather.api.result.GetAreaListResult;
@@ -48,14 +49,20 @@ import java.util.List;
 
 import okhttp3.Call;
 import okhttp3.Response;
+import pub.devrel.easypermissions.EasyPermissions;
 
 /**
  * Created by lindan on 17-2-21.
  * 选择区域
  */
 
-public class ChooseAreaFragment extends BaseFragment implements AbstractRecyclerViewAdapter.OnItemClickListener, View.OnClickListener, BDLocationListener {
-    public static final String TAG = "ChooseAreaFragment";
+public class ChooseAreaFragment extends BaseFragment
+        implements AbstractRecyclerViewAdapter.OnItemClickListener,
+        View.OnClickListener,
+        BDLocationListener,
+        EasyPermissions.PermissionCallbacks {
+    private static final String TAG = "ChooseAreaFragment";
+    private static final int RC_PERMISSIONS = 100;
 
     public static final int LEVEL_PROVINCE = 0;
     public static final int LEVEL_CITY = 1;
@@ -99,7 +106,34 @@ public class ChooseAreaFragment extends BaseFragment implements AbstractRecycler
         adapter.setOnItemClickListener(this);
         btnBack.setOnClickListener(this);
 
-        initPosition();
+        requestRequiredPermissions();
+    }
+
+    //请求权限
+    private void requestRequiredPermissions() {
+        List<String> requiredPerms = new ArrayList<>();
+        if (!EasyPermissions.hasPermissions(getActivity(), Manifest.permission.ACCESS_FINE_LOCATION)) {
+            requiredPerms.add(Manifest.permission.ACCESS_FINE_LOCATION);
+        }
+        if (!EasyPermissions.hasPermissions(getActivity(), Manifest.permission.ACCESS_COARSE_LOCATION)) {
+            requiredPerms.add(Manifest.permission.ACCESS_COARSE_LOCATION);
+        }
+        if (!EasyPermissions.hasPermissions(getActivity(), Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+            requiredPerms.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        }
+        if (!requiredPerms.isEmpty()) {
+            String[] perms = new String[requiredPerms.size()];
+            requiredPerms.toArray(perms);
+            EasyPermissions.requestPermissions(this, getString(R.string.app_name) + getString(R.string.app_permission_message), RC_PERMISSIONS, perms);
+        } else {
+            initPosition();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        EasyPermissions.onRequestPermissionsResult(requestCode, permissions, grantResults, this);
     }
 
     private void initPosition() {
@@ -321,77 +355,78 @@ public class ChooseAreaFragment extends BaseFragment implements AbstractRecycler
     }
 
     private void showLocationSuccessDialog(final String cityName) {
-        final CustomizableConfirmDialog confirmDialog = new CustomizableConfirmDialog(getActivity());
-        confirmDialog.setTitle(getString(R.string.app_location_success_title));
-        confirmDialog.setMessage(getString(R.string.app_location_success_message, cityName));
-        confirmDialog.setPositiveButton(getString(R.string.app_common_button_text_ok), new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                showProgressDialog();
-                WeatherService.getInstance().getCityCode(cityName, new Callback<GetCityInfoResult>() {
+        DialogUtil.showConfirmDialog(getActivity(),
+                getString(R.string.app_location_success_title),
+                getString(R.string.app_location_success_message, cityName),
+                getString(R.string.app_common_button_text_ok),
+                getString(R.string.app_common_button_text_cancel),
+                new IDialog.OnClickListener() {
                     @Override
-                    public GetCityInfoResult parseNetworkResponse(Response response, int id) throws Exception {
-                        String json = response.body().string();
-                        return JSONUtil.getObjectFromJson(json, GetCityInfoResult.class);
-                    }
+                    public void onClick(IDialog dialog, int which) {
+                        dialog.dismiss();
+                        if (which == IDialog.BUTTON_POSITIVE) {
+                            showProgressDialog();
+                            WeatherService.getInstance().getCityCode(cityName, new Callback<GetCityInfoResult>() {
+                                @Override
+                                public GetCityInfoResult parseNetworkResponse(Response response, int id) throws Exception {
+                                    String json = response.body().string();
+                                    return JSONUtil.getObjectFromJson(json, GetCityInfoResult.class);
+                                }
 
-                    @Override
-                    public void onError(Call call, Response response, Exception exception, int id) {
-                        Log.e(TAG, "onError: " + exception.toString());
-                        closeProgressDialog();
-                        DialogUtil.showAlertDialog(getActivity(), "", getString(R.string.app_common_error_msg), getString(R.string.app_common_button_text_i_know));
-                    }
+                                @Override
+                                public void onError(Call call, Response response, Exception exception, int id) {
+                                    Log.e(TAG, "onError: " + exception.toString());
+                                    closeProgressDialog();
+                                    DialogUtil.showAlertDialog(getActivity(), "", getString(R.string.app_common_error_msg), getString(R.string.app_common_button_text_i_know));
+                                }
 
-                    @Override
-                    public void onResponse(GetCityInfoResult response, int id) {
-                        if (response != null && response.HeWeather5 != null && !response.HeWeather5.isEmpty()) {
-                            GetCityInfoResult.HeWeather5Bean weather = response.HeWeather5.get(0);
-                            if (TextUtils.equals(weather.status, "ok")) {
-                                Activity activity = getActivity();
-                                Intent data = new Intent();
-                                data.putExtra(AppConfig.PARAM_CITY_ID, weather.basic.id);
-                                data.putExtra(AppConfig.PARAM_CITY_NAME, weather.basic.city);
-                                activity.setResult(Activity.RESULT_OK, data);
-                                activity.finish();
-                            } else {
-                                ToastUtil.showShort(getActivity(), weather.status);
-                            }
-                        } else {
-                            showLocationErrorDialog();
+                                @Override
+                                public void onResponse(GetCityInfoResult response, int id) {
+                                    if (response != null && response.HeWeather5 != null && !response.HeWeather5.isEmpty()) {
+                                        GetCityInfoResult.HeWeather5Bean weather = response.HeWeather5.get(0);
+                                        // TODO: 17-2-28
+                                        if (TextUtils.equals(weather.status, "ok")) {
+                                            Activity activity = getActivity();
+                                            Intent data = new Intent();
+                                            data.putExtra(AppConfig.PARAM_CITY_ID, weather.basic.id);
+                                            data.putExtra(AppConfig.PARAM_CITY_NAME, weather.basic.city);
+                                            activity.setResult(Activity.RESULT_OK, data);
+                                            activity.finish();
+                                        } else {
+                                            ToastUtil.showShort(getActivity(), weather.status);
+                                        }
+                                    } else {
+                                        showLocationErrorDialog();
+                                    }
+                                }
+                            }, getActivity());
+                        } else if (which == IDialog.BUTTON_NEGATIVE) {
+                            getActivity().runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    queryProvinces();
+                                }
+                            });
                         }
                     }
-                }, getActivity());
-            }
-        });
-        confirmDialog.setNegativeButton(getString(R.string.app_common_button_text_cancel), new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                confirmDialog.dismiss();
-                getActivity().runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        queryProvinces();
-                    }
                 });
-            }
-        });
-        confirmDialog.show();
     }
 
     private void showLocationErrorDialog() {
-        final CustomizableAlertDialog alertDialog = new CustomizableAlertDialog(getActivity());
-        alertDialog.setTitle(getString(R.string.app_location_error_title));
-        alertDialog.setMessage(getString(R.string.app_location_error_message));
-        alertDialog.setButton(getString(R.string.app_common_button_text_ok), new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                alertDialog.dismiss();
-                queryProvinces();
-            }
-        });
-        alertDialog.show();
+        DialogUtil.showAlertDialog(getActivity(),
+                getString(R.string.app_location_error_title),
+                getString(R.string.app_location_error_message),
+                getString(R.string.app_common_button_text_ok),
+                new IDialog.OnClickListener() {
+                    @Override
+                    public void onClick(IDialog dialog, int which) {
+                        dialog.dismiss();
+                        queryProvinces();
+                    }
+                });
     }
 
+    //---------------------以下方法为百度定位相关方法----------------------------
     @Override
     public void onReceiveLocation(BDLocation bdLocation) {
         int locType = bdLocation.getLocType();
@@ -402,6 +437,9 @@ public class ChooseAreaFragment extends BaseFragment implements AbstractRecycler
             showLocationErrorDialog();
         } else {
             String city = bdLocation.getAddress().city;
+            if(city.endsWith("市")) {
+                city = city.substring(0, city.length() - 1);
+            }
             showLocationSuccessDialog(city);
         }
     }
@@ -409,5 +447,22 @@ public class ChooseAreaFragment extends BaseFragment implements AbstractRecycler
     @Override
     public void onConnectHotSpotMessage(String s, int i) {
 
+    }
+
+    //------------------以下方法为权限申请相关---------------------
+    @Override
+    public void onPermissionsGranted(int requestCode, List<String> perms) {
+        if (requestCode == RC_PERMISSIONS) {
+            if (perms != null && !perms.isEmpty()) {
+                initPosition();
+            }
+        }
+    }
+
+    @Override
+    public void onPermissionsDenied(int requestCode, List<String> perms) {
+        if (requestCode == RC_PERMISSIONS) {
+            ToastUtil.showShort(getActivity(), getString(R.string.app_permission_denied_result));
+        }
     }
 }

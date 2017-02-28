@@ -28,7 +28,7 @@ public class AppConfig {
     /**
      * 保存在SharedPreference的城市ID列表Key
      */
-    public static final String SHARE_KEY_CITY_ID_LIST = "city_list";
+    public static final String SHARE_KEY_CITY_LIST = "city_list";
 
     /**
      * 图片的URL

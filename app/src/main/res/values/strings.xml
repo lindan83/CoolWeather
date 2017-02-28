@@ -36,6 +36,9 @@
     <string name="app_location_success_title">定位成功</string>
     <string name="app_location_success_message">是否选择当前城市: %s ?</string>
 
+    <string name="app_permission_message">需要申请权限，请选择同意</string>
+    <string name="app_permission_denied_result">拒绝授权可能导致App无法运行</string>
+
     <string-array name="app_setting_auto_update_items">
         <item>开</item>
         <item>关</item>

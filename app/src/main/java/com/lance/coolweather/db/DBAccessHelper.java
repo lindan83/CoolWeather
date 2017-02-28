@@ -35,12 +35,4 @@ public class DBAccessHelper {
     public static County findCounty(String cityId) {
         return DataSupport.where("weatherId=?", cityId).findFirst(County.class);
     }
-
-    public static boolean saveCounty(County county) {
-        return county.save();
-    }
-
-    public static void initDB() {
-
-    }
 }

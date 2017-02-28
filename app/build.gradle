@@ -54,6 +54,7 @@ dependencies {
     })
     compile 'com.android.support:appcompat-v7:25.2.0'
     compile 'org.litepal.android:core:1.4.1'
+    compile 'pub.devrel:easypermissions:0.3.0'
     compile 'com.lance.common:util:1.0.0'
     compile 'com.lance.common:glideimageloader:1.0.0'
     compile 'com.lance.network:okhttputil:1.0.0'

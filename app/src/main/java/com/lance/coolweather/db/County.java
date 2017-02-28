@@ -7,10 +7,10 @@ import org.litepal.crud.DataSupport;
  */
 
 public class County extends DataSupport implements Area {
-    public long code;
+    public transient long code;
     public String countyName;
     public String weatherId;
-    public long cityCode;
+    public transient long cityCode;
 
     @Override
     public boolean equals(Object o) {
