@@ -40,6 +40,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import okhttp3.Call;
 import okhttp3.Response;
@@ -133,17 +134,21 @@ public class WeatherActivity extends BaseActivity implements View.OnClickListene
             for (County county : countyList) {
                 countyIdList.add(county.weatherId);
             }
-            for (String oldCityId : fragmentMap.keySet()) {
+            Set<String> keySet = fragmentMap.keySet();
+            for (String oldCityId : keySet) {
                 if (!countyIdList.contains(oldCityId)) {
                     fragmentMap.remove(oldCityId);
                     pagerAdapter.removeFragment(oldCityId);
                 }
             }
+        } else {
+            fragmentMap.clear();
+            pagerAdapter.clearFragments();
         }
-        pagerAdapter.notifyDataSetChanged();
         if (currentIndex >= countyList.size()) {
             currentIndex = countyList.size() - 1;
         }
+        vpCities.setVisibility(fragmentMap.isEmpty() ? View.GONE : View.VISIBLE);
         vpCities.setCurrentItem(currentIndex);
         btnAddCity.setVisibility(countyList.isEmpty() ? View.VISIBLE : View.GONE);
         addIndicatorView(llIndicators, currentIndex, countyList.size());
@@ -159,6 +164,7 @@ public class WeatherActivity extends BaseActivity implements View.OnClickListene
         btnAddCity.setVisibility(countyList.isEmpty() ? View.VISIBLE : View.GONE);
         btnAddCity.setOnClickListener(this);
         vpCities = (ViewPager) findViewById(R.id.vp_cities);
+        vpCities.setVisibility(fragmentMap.isEmpty() ? View.GONE : View.VISIBLE);
         llIndicators = (LinearLayout) findViewById(R.id.ll_indicators);
 
         vpCities.setAdapter(pagerAdapter);
@@ -186,9 +192,10 @@ public class WeatherActivity extends BaseActivity implements View.OnClickListene
     }
 
     private void addIndicatorView(LinearLayout guideGroup, int startPos, int count) {
+        guideGroup.setVisibility(count == 0 ? View.GONE : View.VISIBLE);
+        cityIndicatorViews.clear();
+        guideGroup.removeAllViews();
         if (count > 1) {
-            cityIndicatorViews.clear();
-            guideGroup.removeAllViews();
             for (int i = 0; i < count; i++) {
                 View view = new View(this);
                 view.setBackgroundResource(R.drawable.bg_selector_city);
