@@ -186,7 +186,7 @@ public class WeatherActivity extends BaseActivity implements View.OnClickListene
     }
 
     private void addIndicatorView(LinearLayout guideGroup, int startPos, int count) {
-        if (count > 0) {
+        if (count > 1) {
             cityIndicatorViews.clear();
             guideGroup.removeAllViews();
             for (int i = 0; i < count; i++) {
